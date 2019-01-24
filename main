@@ -1,0 +1,92 @@
+//make ; cp BUILD/Nucleo_read_analog_value.bin /media/jyannuoruta/NODE_L476RG
+
+#include "mbed.h"
+#define BIT 10
+
+DigitalOut myled(LED1);
+DigitalOut d11(D11);
+DigitalOut d12(D12);
+
+RawSerial rfid(D8, D2, 9600);
+Serial pc(USBTX, USBRX, 9600);
+
+int flag, count_red,count_blue;
+int numberBit[BIT];
+
+int card_red[BIT] = {0, 5, 0, 0, 7, 21, 17, 8, 3, 17};
+int card_blue[BIT]={0, 5, 0, 0, 7, 9, 21, 4, 1, 1};
+
+void display()
+{
+        for (int i = 0; i < BIT; i++)
+                pc.printf("%d ", numberBit[i]);
+}
+
+void write_in_to_buf()
+{
+        if (rfid.getc() == 0x02)
+        {
+                for (int i = 0; i < BIT; i++)
+                        numberBit[i] = rfid.getc();
+
+                for (int i = 0; i < BIT; i++)
+                        numberBit[i] -= 48;
+        }
+}
+
+int main()
+{
+        myled=0;d11=0;d12=0;
+        flag = 0;
+        for (int i = 0; i < BIT; i++)
+                numberBit[i] = 0;
+
+        if (myled.is_connected())
+        {
+                printf("myled is initialized and connected!\n\r");
+        }
+
+        rfid.attach(&write_in_to_buf, Serial::RxIrq);
+
+        while (1)
+        {
+                count_red = 0;count_blue=0;
+                for (int i = 0; i < BIT; i++)
+                {
+                        if (numberBit[i] == card_red[i])
+                                count_red++;
+                         if (numberBit[i] == card_blue[i])
+                                count_blue++;       
+                }
+                if (count_red == BIT)
+                        flag = 1;
+                if(count_blue==BIT)
+                        flag=2;
+
+                if (flag!=0)
+                {
+                        if(flag==1)
+                        {
+                                d11=!d11;
+                                wait(2);
+                                d11=!d11;
+
+                                flag = 0;
+                                for (int i = 0; i < BIT; i++)
+                                        numberBit[i] = 0;
+                        }
+
+                        if(flag==2)
+                        {
+                                d12=!d12;
+                                wait(2);
+                                d12=!d12;
+
+                                flag = 0;
+                                for (int i = 0; i < BIT; i++)
+                                        numberBit[i] = 0;
+                        }
+
+                }
+        }
+}
